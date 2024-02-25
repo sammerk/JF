@@ -1,0 +1,29 @@
+---
+title: "2024_02_27_ML_mit_brms"
+author: "Samuel Merk"
+format: html
+editor: visual
+---
+
+## Notiz zu letzter Woche
+
+Nach dem Hören der [Quantitude Folge zu Simpson's Paradox](https://quantitudepod.org/s5e16-simpsons-paradox/) würde ich sagen, dass es Fälle gibt die sowohl die Definiton von Ecological Fallacy und Simpson's Paradox erfüllen aber weder
+
+$$
+\text{Ecological Fallacy} \not\subseteq \text{Simpson's Paradox} \\
+\text{Simpson's Paradox} \not\subseteq \text{Ecological Fallacy} \\
+$$
+
+```{r}
+library(tidyverse)
+library(ggforce)
+tibble(x = c(0, 1),
+       y = c(0, 0),
+       ` ` = c("Simpson's Paradox", "Ecological Fallacy")) |> 
+ggplot(aes(x0 = x, y0 = y, r = .8, fill = ` `)) +
+  geom_circle(alpha = .3, size = 1, colour = 'grey') +
+      coord_fixed() +
+        theme_void()
+```
+
+## Datengrundlage
