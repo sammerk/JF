@@ -27,3 +27,18 @@ ggplot(aes(x0 = x, y0 = y, r = .8, fill = ` `)) +
 ```
 
 ## Datengrundlage
+
+Florians Experiment zur effect size perception; plot vs. text
+:::: {.columns}
+
+::: {.column width='50%'}
+![https://github.com/floKuehl/TextViz/blob/main/Images/feedbackai_-0.2_halfeye_yaxis_cohensU3.png?raw=true]()
+:::
+
+::: {.column width='50%'}
+Text ...
+:::
+
+::::
+
+Eine AV ist die wahrgenommene 
