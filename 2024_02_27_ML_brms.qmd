@@ -1,8 +1,10 @@
 ---
 title: "2024_02_27_ML_mit_brms"
 author: "Samuel Merk"
-format: html
-editor: visual
+format: 
+  html:
+    self-contained: true
+lightbox: true
 ---
 
 ## Notiz zu letzter Woche
@@ -15,8 +17,23 @@ $$
 $$
 
 ```{r}
-library(tidyverse)
-library(ggforce)
+#| label: venn diagram
+#| message: false
+#| warning: false
+#| echo: false
+
+library(psychometric) # for ICC compuation
+library(ggforce)      # for sinaplots
+library(sjPlot)       # for nice tables with cluster-rob SE
+library(sjstats)      # for design effect
+library(brms)         # for bayesian regression
+library(easystats)    # bayestestR and see
+library(lme4)         # for multi-level model
+library(lmerTest)     # for p-values of multi-level models
+library(estimatr)     # for lm_robust
+library(tidyverse)    # for everything else
+
+
 tibble(x = c(0, 1),
        y = c(0, 0),
        ` ` = c("Simpson's Paradox", "Ecological Fallacy")) |> 
@@ -28,17 +45,240 @@ ggplot(aes(x0 = x, y0 = y, r = .8, fill = ` `)) +
 
 ## Datengrundlage
 
-Florians Experiment zur effect size perception; plot vs. text
+### Florians Experiment zur effect size perception; plot vs. text 
+
+#### Gemeinsame Vignette
+> A group of researchers investigated whether primary students improve their reading fluency more when they use an AI tutor than when a teacher corrects words. To answer this question, students were randomly assigned to one of two groups by flipping a coin. Over the course of four weeks, one group practiced reading with an AI tutor that gave students feedback on misread or mispronounced words, and the other group practiced reading with a teacher who corrected their mistakes as they read aloud together in class. After this four-week period, both groups were asked to complete a reading test.
+
 :::: {.columns}
 
-::: {.column width='50%'}
-![https://github.com/floKuehl/TextViz/blob/main/Images/feedbackai_-0.2_halfeye_yaxis_cohensU3.png?raw=true]()
+::: {.column width="50%"}
+#### Bedingung Plot
+> The researchers received the following result after conducting the experiment:
+![](https://raw.githubusercontent.com/floKuehl/TextViz/main/Images/feedbackai_-0.2_halfeye_yaxis_cohensU3.png)
 :::
 
-::: {.column width='50%'}
-Text ...
+::: {.column width="50%"}
+#### Bedingung Text
+> 78.8% of the students who practiced reading with the AI tutor scored higher on the reading test than the average score of the group who practiced reading with the help of their teacher.
 :::
 
 ::::
 
-Eine AV ist die wahrgenommene 
+Eine AV ist die wahrgenommene Informativität `informativity` - ein Likert-Item mit sieben Stufen.
+
+### Data Import
+```{r}
+#| label: data import
+
+# falls ihr das github-repo geforked habt
+data <- read_csv("data/2024_02_27_jfdata.csv")
+
+# falls ihr nicht github nutzt
+data <- read_csv("https://bit.ly/merk129")
+
+glimpse(data)
+
+data <- 
+  data |> 
+  mutate(
+    # create short session(= participant) names
+    session = as.factor(as.numeric(as.factor(session))),
+    # create manual numeric dummy for text condition (for fiexed effects model)
+    dummy_text = ifelse(stimulus_type == "text", 1, 0)) 
+```
+
+Die weiteren Variablen im Datensatz sind `stimulus_type` (die UV) und `session` (der Personidentifier und damit hier auch die Clustervariable).
+
+## Visualisierung
+
+Wie immer 😉, starten wir mit einem Plot des Effekts, der u.a. die Rohdaten enthält
+
+```{r}
+#| label: plot1
+
+# complete pooling
+data |> 
+  ggplot(aes(stimulus_type, informativity)) +
+  geom_violin() +
+  geom_sina() +
+  theme_minimal()
+```
+
+
+```{r}
+#| label: plot2
+#| fig-width: 10
+
+# no pooling
+data |> 
+  ggplot(aes(stimulus_type, informativity, color = session)) +
+  geom_jitter(aes(shape = stimulus_type), height = .1, alpha = .6) +
+  facet_wrap(~session) +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  guides(color=guide_legend(nrow=2,byrow=TRUE))
+
+```
+
+## ICC und Designeffect
+
+```{r}
+#| label: ICC und DEFT
+
+# compute ICC1  
+ICC1.lme(informativity, session, data)
+
+# compute DEFT for current clustersize (12)
+design_effect(12, ICC1.lme(informativity, session, data))
+```
+
+## Einfache lineare Dummyregression
+```{r}
+#| label: simple dummy regression
+
+mod00 <- lm(informativity ~ dummy_text, 
+            data = data)
+
+tab_model(
+  mod00, 
+  dv.labels = c("OLS"),
+  show.se = T)
+```
+
+
+## Cluster Robust SE
+```{r}
+mod01 <- lm_robust(informativity ~ dummy_text, 
+                   cluster = session,
+                   data = data)
+tab_model(
+  mod00, 
+  mod01,
+  dv.labels = c("OLS", "Sandwich SE"),
+  show.se = T
+)
+```
+
+
+## Fixed effects regression
+```{r}
+#| label: Fixed effects regression
+
+# add session as dummycoded predictor and remove intercept via `-1`
+mod02 <- lm(informativity ~ dummy_text + session - 1, 
+           data = data)
+
+tab_model(
+  mod00, 
+  mod01,
+  mod02,
+  dv.labels = c("OLS", "Sandwich SE", "Fixed Effects"),
+  show.se = T
+)
+```
+
+
+![Darstellung des Fixed Effects Modells mit Minimaldaten](img/2024_02_27_Fixed effect two clusters.png)
+
+## Multi-level model
+```{r}
+#| label: Multi-level model
+
+# random intercept model
+mod03 <- lmer(informativity ~ dummy_text + (1|session), 
+           data = data)
+
+tab_model(
+  mod00, 
+  mod01,
+  mod02,
+  mod03,
+  dv.labels = c("OLS", 
+                "Sandwich SE", 
+                "Fixed Effects",
+                "Multi-Level"),
+  show.se = T
+)
+
+```
+
+
+## Bayesian simple linear regression
+```{r}
+#| label: Bayesian simple regression model
+mod04 <- brm(informativity ~ dummy_text, data = data)
+
+# diagnose the MCMC
+plot(mod04)
+
+# check posterior predictives
+pp_check(mod04)
+
+# look a the posterior
+describe_posterior(mod04)
+
+# caculate the probability of direction
+pd(mod04)
+plot(pd(mod04))
+
+# rope
+rope(mod04, range = c(-.5, .5))
+
+# compare models
+tab_model(
+  mod00, 
+  mod01,
+  mod02,
+  mod03,
+  mod04,
+  dv.labels = c("OLS", 
+                "Sandwich SE", 
+                "Fixed Effects",
+                "Multi-Level",
+                "Bayesian simple Reg."),
+  show.se = T
+)
+```
+
+## Bayesian multi-level regression modell
+```{r}
+#| label: Bayesian multi-level regression model
+mod05 <- brm(informativity ~ dummy_text + (1 | session),
+             iter = 10000,
+             data = data)
+
+# diagnose the MCMC
+plot(mod05)
+
+# check posterior predictives
+pp_check(mod05)
+
+# look a the posterior
+describe_posterior(mod05)
+
+# caculate the probability of direction
+pd(mod05)
+plot(pd(mod05))
+
+# rope
+rope(mod05, range = c(-.5, .5))
+
+# compare models
+tab_model(
+  mod00, 
+  mod01,
+  mod02,
+  mod03,
+  mod04,
+  mod05,
+  dv.labels = c("OLS", 
+                "Sandwich SE", 
+                "Fixed Effects",
+                "Multi-Level",
+                "Bayesian simple Reg.",
+                "Bayes. multi-level"),
+  show.se = T
+)
+```
+
