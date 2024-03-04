@@ -1,5 +1,6 @@
 ---
 title: "2024_02_27_ML_mit_brms"
+subtitle: "https://sammerk.github.io/JF/"
 author: "Samuel Merk"
 format: 
   html:
@@ -12,7 +13,10 @@ lightbox: true
 Nach dem Hören der [Quantitude Folge zu Simpson's Paradox](https://quantitudepod.org/s5e16-simpsons-paradox/) würde ich sagen, dass es Fälle gibt die sowohl die Definiton von Ecological Fallacy und Simpson's Paradox erfüllen aber weder
 
 $$
-\text{Ecological Fallacy} \not\subseteq \text{Simpson's Paradox} \\
+\text{Ecological Fallacy} \not\subseteq \text{Simpson's Paradox}
+$$
+
+$$
 \text{Simpson's Paradox} \not\subseteq \text{Ecological Fallacy} \\
 $$
 
